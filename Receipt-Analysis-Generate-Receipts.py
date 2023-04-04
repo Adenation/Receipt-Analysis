@@ -70,7 +70,8 @@ fonts = ["arial.ttf", "DejaVuSans.ttf", "FreeMono.ttf", "AdobeVFPrototype.ttf"]
 
 # Define method to generate random spelling errors
 def generate_spelling_error(word):
-    options = ['omit', 'repeat', 'o_to_0', '0_to_o', 'i_to_1', '1_to_i', 'l_to_1', '1_to_l', 's_to_5', '5_to_s']
+    options = ['omit', 'repeat', 'o_to_0', '0_to_o', 'i_to_1', '1_to_i',
+               'l_to_1', '1_to_l', 's_to_5', '5_to_s', 'blank']
     error_type = random.choice(options)
     if error_type == 'omit':
         if len(word) > 1:
@@ -81,6 +82,9 @@ def generate_spelling_error(word):
     elif error_type == 'repeat':
         index = random.randint(0, len(word) - 1)
         return word[:index] + word[index] + word[index:]
+    elif error_type == 'blank':
+        index = random.randint(0, len(word) - 1)
+        return word[:index] + ' ' + word[index + 1:]
     elif error_type == 'o_to_0':
         return word.replace('o', '0').replace('O', '0')
     elif error_type == '0_to_o':
@@ -112,6 +116,11 @@ padding = 20
 image_width = 600
 image_height = 800
 
+# Customize Parameters of Receipt
+min_items = 3
+max_items = 7
+min_quantity = 1
+max_quantity = 5
 
 receipt_list = []    
 
@@ -155,7 +164,7 @@ for j in range(receipts_to_generate):
     item_y = padding + title_height*2 + padding + address_height*2 + padding
     
     # Define the number of items purchased and the subtotal
-    num_items = random.randint(5, 10)
+    num_items = random.randint(min_items, max_items)
     sub_total = 0
     
     
@@ -167,7 +176,7 @@ for j in range(receipts_to_generate):
         # Randomly generate spelling errors
         item = generate_spelling_error(item)
         
-        quantity = random.randint(1, 5)
+        quantity = random.randint(min_quantity, max_quantity)
     
         # Calculate the item total
         item_total = price * quantity
@@ -226,9 +235,7 @@ for j in range(receipts_to_generate):
     # Add the barcode to the image
     image.past(barcode_image, (10, image_height - new_barcode_height - 20))
     # Draw the image
-    #image.show()
-    image.save('receipt' + str(j+170) + '.png')
-    #receipt_list.append(image)
+    image.save('receipt' + str(j) + '.png')
 
 
 
