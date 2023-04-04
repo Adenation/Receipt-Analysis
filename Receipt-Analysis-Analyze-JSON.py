@@ -71,7 +71,7 @@ def levenshtein_distance(s1, s2):
 
 # Define a function to perform the approximate string matching
 def approximate_string_matching(string, options_list):
-    match_list = difflib.get_close_matches(string, options_list, n=3, cutoff=0.5)
+    match_list = difflib.get_close_matches(string, options_list, n=3, cutoff=0.6)
     if len(match_list) > 0:
         best_match = match_list[0]
         similarity_ratio = difflib.SequenceMatcher(None, string, best_match).ratio()
@@ -80,7 +80,7 @@ def approximate_string_matching(string, options_list):
         best_match = string, match_list[0], levenshtein_distance(string, match_list[0])
         print(best_match)
         print(f'Matching {best_match[0]} to {best_match[1]} with a Levenshtein distance of {best_match[2]}')
-        matchList.append([string, match_list, match_prob, best_match])
+        matchList.append([string, match_list, similarity_ratio, best_match])
         return best_match
     else:
         return None
