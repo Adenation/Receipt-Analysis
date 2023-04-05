@@ -45,7 +45,7 @@ items = [("Apples", 1.50), ("Bananas", 0.80), ("Oranges", 1.20),
 # Define the ShopList and ProductList
 ShopList = [(1, 'Tesco'), (2, 'Asda'), (3, 'Lidl'), (4, "Sainsbury's"), (5, 'M&S'), (6, 'Aldi')]
 ProductList =  [(i+1, item[0]) for i, item in enumerate(items)]
-
+ExclusionList = ['Total', 'Subtotal', 'Multibuy']
 # Persist matches for review
 matchList = []
 
@@ -73,20 +73,50 @@ def levenshtein_distance(s1, s2):
     return previous_row[-1]
 
 # Define a function to perform the approximate string matching
-def approximate_string_matching(string, options_list):
-    match_list = difflib.get_close_matches(string, options_list, n=3, cutoff=0.6)
-    if len(match_list) > 0:
-        best_match = match_list[0]
-        similarity_ratio = difflib.SequenceMatcher(None, string, best_match).ratio()
-        match_prob = 1 - (1 - similarity_ratio) ** len(best_match)
-        print(f'Best match: {best_match}, match probability: {match_prob:.2f}')
-        best_match = string, match_list[0], levenshtein_distance(string, match_list[0])
-        print(best_match)
-        print(f'Matching {best_match[0]} to {best_match[1]} with a Levenshtein distance of {best_match[2]}')
-        matchList.append([string, match_list, similarity_ratio, best_match])
-        return best_match
-    else:
-        return None
+def approximate_string_matching(string):
+    # First, check if word matches anything in the exclusion list that could be
+    # misinterpreted as a product
+    #match_list = difflib.get_close_matches(string, ExclusionList, n=1, cutoff=0.9)
+    #if match_list:
+#        similarity_ratio = difflib.SequenceMatcher(None, string, match_list[0]).ratio()
+   #     matchList.append([string, match_list, similarity_ratio])        
+  #  else: # Check matches
+        shop_match_list = difflib.get_close_matches(string, [shop[1] for shop in ShopList], n=3, cutoff=0.6)
+        product_match_list = difflib.get_close_matches(string, [product[1] for product in ProductList], n=3, cutoff=0.6)
+        
+        if len(shop_match_list) > 0 and len(product_match_list) > 0:
+            shop_best_match = shop_match_list[0]
+            shop_similarity_ratio = difflib.SequenceMatcher(None, string, shop_best_match).ratio()
+            shop_match_prob = 1 - (1 - shop_similarity_ratio) ** len(shop_best_match)
+            product_best_match = product_match_list[0]
+            product_similarity_ratio = difflib.SequenceMatcher(None, string, product_best_match).ratio()
+            product_match_prob = 1 - (1 - product_similarity_ratio) ** len(product_best_match)
+            
+            if shop_match_prob > product_match_prob:
+                best_match = shop_best_match
+                similarity_ratio = shop_similarity_ratio
+                match_type = 'shop'
+            else:
+                best_match = product_best_match
+                similarity_ratio = product_similarity_ratio
+                match_type = 'product'
+        elif len(shop_match_list) > 0:
+            best_match = shop_match_list[0]
+            similarity_ratio = difflib.SequenceMatcher(None, string, best_match).ratio()
+            match_type = 'shop'
+        elif len(product_match_list) > 0:
+            best_match = product_match_list[0]
+            similarity_ratio = difflib.SequenceMatcher(None, string, best_match).ratio()
+            match_type = 'product'
+        else:
+            return None
+        
+        print(f'Best match: {best_match}, match probability: {similarity_ratio:.2f}')
+        best_match_tuple = (string, best_match, levenshtein_distance(string, best_match))
+        print(best_match_tuple)
+        print(f'Matching {best_match_tuple[0]} to {best_match_tuple[1]} with a Levenshtein distance of {best_match_tuple[2]}')
+        matchList.append([string, best_match_tuple[1], similarity_ratio, best_match_tuple[2]])
+        return best_match_tuple, match_type
 
 
 
@@ -97,37 +127,25 @@ def process_json(json_payload):
             for line in recognized_text['lines']:
                 for word in line['words']:
                     print(f'Matching to ' + word['text'])
-                    # Check if the word matches a shop name
-                    shop_match = approximate_string_matching(word['text'], [shop[1] for shop in ShopList])
-                    # If there's a match
-                    if shop_match:
-                        shop_id = [shop[0] for shop in ShopList if shop[1] == shop_match[1]][0]
-                        # If the Levenshtein distance is greater than 0
-                        if shop_match[2] > 0:
-                            # Add the shop to the list with the correct ID
-                            ShopList.append((shop_id, shop_match[0]))
-                            print(f'Matched {shop_match[0]} to {shop_match[1]} with ID {shop_id}')
-                            writer.writerow(['shop', shop_id, shop_match[0], shop_match[1], shop_match[2]])
+                    # Check if the word matches a shop or product name
+                    match = approximate_string_matching(word['text'])
+                    print(f'Match: {match}')
+                    if match:
+                        match_text = match[0][1]
+                        print(f'Match Text: {match_text}')
+                        match_type = match[1]
+                        print(f'Match Type: {match_type}')
+                        match_id = [item[0] for item in ShopList+ProductList if item[1]==match_text][0]
+                        print(f'Match ID: {match_id}')
+                        match_distance = match[0][2]
+                        if match_distance > 0:
+                            if match_type == "shop":
+                                ShopList.append((match_id, match[0][0]))
+                            elif match_type == "product":
+                                ProductList.append((match_id, match[0][0]))
+                            writer.writerow([match_type, match_id, match[0][0], match_text, match_distance])
                         else:
-                            print(f'{shop_match[0]} is already in list with ID {shop_id}')
-                            writer.writerow(['shop', shop_id, shop_match[0], shop_match[1], shop_match[2]])
-                        #if not shop_id:
-                        #    new_id = max([shop[0] for shop in ShopList]) + 1
-                        #    ShopList.append((new_id, shop_match))
-                    # Check if the word matches a product name
-                    product_match = approximate_string_matching(word['text'], [product[1] for product in ProductList])
-                    # If there's a match
-                    if product_match:
-                        product_id = [product[0] for product in ProductList if product[1] == product_match[1]][0]
-                        # If the Levenshtein distance is greater than 0
-                        if product_match[2] > 0:
-                           # Add the product to the list with the correct ID
-                           ProductList.append((product_id, product_match[0]))
-                           print(f'Matched {product_match[0]} to {product_match[1]} with ID {product_id}')
-                           writer.writerow(['product', product_id, product_match[0], product_match[1], product_match[2]])
-                        else:
-                           print(f'{product_match[0]} is already in list with ID {product_id}')
-                           writer.writerow(['product', product_id, product_match[0], product_match[1], product_match[2]])
+                            writer.writerow([match_type, match_id, match[0][0], match_text, "exact match"])
 
 #%% Main
 if __name__ == "__main__":
@@ -146,8 +164,8 @@ if __name__ == "__main__":
     
     # You can either call the filename from the .env file, uncomment based
     # on your storage type
-    #filename = os.getenv('JSON_STORAGE') # Computer Vision
-    filename = os.getenv('JSON_STORAGE_FORM_RECOGNIZER') # Form Recognizer    
+    filename = os.getenv('JSON_STORAGE') # Computer Vision
+    #filename = os.getenv('JSON_STORAGE_FORM_RECOGNIZER') # Form Recognizer    
     
     # Or comment the above line of code out and replace filename with the
     # string literal of the file name you desire
