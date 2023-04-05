@@ -10,6 +10,7 @@ import difflib
 import os
 import json
 import csv
+from dotenv import load_dotenv
 
 #%% Lists
 
@@ -70,7 +71,7 @@ def levenshtein_distance(s1, s2):
 
 # Define a function to perform the approximate string matching
 def approximate_string_matching(string, options_list):
-    match_list = difflib.get_close_matches(string, options_list, n=5, cutoff=0.25)
+    match_list = difflib.get_close_matches(string, options_list, n=3, cutoff=0.6)
     if len(match_list) > 0:
         best_match = match_list[0]
         similarity_ratio = difflib.SequenceMatcher(None, string, best_match).ratio()
@@ -79,6 +80,7 @@ def approximate_string_matching(string, options_list):
         best_match = string, match_list[0], levenshtein_distance(string, match_list[0])
         print(best_match)
         print(f'Matching {best_match[0]} to {best_match[1]} with a Levenshtein distance of {best_match[2]}')
+        matchList.append([string, match_list, similarity_ratio, best_match])
         return best_match
     else:
         return None
@@ -124,8 +126,17 @@ def process_json(json_payload):
                        writer.writerow(['product', product_id, product_match[0], product_match[1], product_match[2]])
 
 
+#%% Change Directory
+
+# Ensure Working Directory is the same as the folder
+os.getcwd()
+os.chdir('[Your Directory]')
 
 #%% Load JSONs from a file
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 # You can either call the filename from the .env file
 filename = os.getenv('JSON_STORAGE')
@@ -146,6 +157,7 @@ json_data_list = [json.loads(payload) for payload in json_payloads]
 
 
 #%% Fuzzy Matching
+matchList = []
 
 # Process the example JSON payload and write matches to a CSV file
 with open('matches.csv', 'w', newline='') as csvfile:

@@ -16,7 +16,7 @@ import time
 from dotenv import load_dotenv
 import os
 
-#%% Generate JSON
+ #%% Generate JSON
 
 
 # Load environment variables from .env file
@@ -105,12 +105,11 @@ filename = os.getenv('JSON_STORAGE')
 # Or comment the above line of code out and replace filename with the
 # string literal of the file name you desire
 
-with open(filename, 'w') as f:
+with open(filename, 'a') as f:
     # Iterate through payloads
     for i, payload in enumerate(json_data_list):
         # Write JSON payload to file
         f.write(json.dumps(payload))
         # Add separator between payloads
-        if i < len(json_data_list) - 1:
-            f.write('\n')
+        f.write('\n')
 f.close()
