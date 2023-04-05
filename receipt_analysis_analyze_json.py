@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     # Ensure Working Directory is the same as the folder
     os.getcwd()
-    os.chdir('[Your Directory]')
+    #os.chdir('[Your Directory]')
     
     #%% Load JSONs from a file
     
@@ -144,8 +144,10 @@ if __name__ == "__main__":
     load_dotenv()
     
     
-    # You can either call the filename from the .env file
-    filename = os.getenv('JSON_STORAGE')
+    # You can either call the filename from the .env file, uncomment based
+    # on your storage type
+    #filename = os.getenv('JSON_STORAGE') # Computer Vision
+    filename = os.getenv('JSON_STORAGE_FORM_RECOGNIZER') # Form Recognizer    
     
     # Or comment the above line of code out and replace filename with the
     # string literal of the file name you desire
