@@ -64,10 +64,9 @@ params = {
 # call the API to analyze the images and load into a list of json payloads
 
 headers_list = []
-print(headers_list)
 responses_list = []
-
 json_data_list = []
+
 for image_data in png_bytes_list:
     post = requests.post(endpoint, headers=headers, params=params, data=image_data)
     headers_list.append(post.headers)
@@ -92,6 +91,7 @@ for image_data in png_bytes_list:
         if response.status_code == 202:
             print("Waiting for server to process response.  Attempting again in 3 seconds")
             attempts += 1
+            time.sleep(3)
         else:
             print("Error retrieving results:", response.text, response.status_code)
     
