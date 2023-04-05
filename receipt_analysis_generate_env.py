@@ -26,3 +26,6 @@ from dotenv import set_key
 set_key('.env', 'SUBSCRIPTION_KEY', '[Your key]')
 set_key('.env', 'ENDPOINT', '[Your endpoint]')
 set_key('.env', 'JSON_STORAGE', '[Your filename]')
+set_key('.env', 'SUBSCRIPTION_KEY_FORM_RECOGNIZER', '[Your key]')
+set_key('.env', 'ENDPOINT_FORM_RECOGNIZER', '[Your endpoint]')
+set_key('.env', 'JSON_STORAGE_FORM_RECOGNIZER', '[Your filename]')
