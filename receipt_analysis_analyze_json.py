@@ -129,7 +129,7 @@ def process_json(json_payload):
                     print(f'Matching to ' + word['text'])
                     # Check if the word matches a shop or product name
                     match = approximate_string_matching(word['text'])
-                    print(f'Match: {match} + {match[0]}')
+                    print(f'Match: {match}')
                     if match:
                         match_text = match[0][1]
                         print(f'Match Text: {match_text}')
@@ -140,14 +140,12 @@ def process_json(json_payload):
                         match_distance = match[0][2]
                         if match_distance > 0:
                             if match_type == "shop":
-                                ShopList.append((len(ShopList) + 1, match[0][0]))
-                                match_id = len(ShopList)
+                                ShopList.append((match_id, match[0][0]))
                             elif match_type == "product":
-                                ProductList.append((len(ProductList) + 1, match[0][0]))
-                                match_id = len(ProductList)
-                            writer.writerow([match_type, match_id, match_text, match_distance])
+                                ProductList.append((match_id, match[0][0]))
+                            writer.writerow([match_type, match_id, match[0][0], match_text, match_distance])
                         else:
-                            writer.writerow([match_type, match_id, match_text, "exact match"])
+                            writer.writerow([match_type, match_id, match[0][0], match_text, "exact match"])
 
 #%% Main
 if __name__ == "__main__":
