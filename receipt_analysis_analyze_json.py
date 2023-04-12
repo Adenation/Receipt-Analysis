@@ -11,7 +11,7 @@ import os
 import json
 import csv
 from dotenv import load_dotenv
-
+import itertools
 #%% Lists
 
 # Define a list of item names and prices
@@ -112,10 +112,12 @@ def approximate_string_matching(string):
             return None
         
         print(f'Best match: {best_match}, match probability: {similarity_ratio:.2f}')
-        best_match_tuple = (string, best_match, levenshtein_distance(string, best_match))
+        best_match_tuple = (string, best_match, similarity_ratio, levenshtein_distance(string, best_match))
         print(best_match_tuple)
-        print(f'Matching {best_match_tuple[0]} to {best_match_tuple[1]} with a Levenshtein distance of {best_match_tuple[2]}')
-        matchList.append([string, best_match_tuple[1], similarity_ratio, best_match_tuple[2]])
+        print(similarity_ratio)
+        print(f'{similarity_ratio:.2f}')
+        print(f'Matching {best_match_tuple[0]} to {best_match_tuple[1]} with a Levenshtein distance of {best_match_tuple[3]}')
+        #matchList.append(best_match_tuple)
         return best_match_tuple, match_type
 
 
@@ -125,27 +127,67 @@ def process_json(json_payload):
     if __name__ == '__main__':
         for recognized_text in json_payload['analyzeResult']['readResults']:
             for line in recognized_text['lines']:
-                for word in line['words']:
-                    print(f'Matching to ' + word['text'])
+                matched_words = []; unmatched_words = []; best_match = ''
+                words = []
+                for i in range(1, len(line['words'])+1):
+                    for combination in itertools.combinations(line['words'], i):
+                    # Check for excluded words
+                    ## //code
+                        text = ""
+                        for word in combination:
+                            text += word['text'] + " "
+                        words.append(text.strip())
+                for word in words:
                     # Check if the word matches a shop or product name
-                    match = approximate_string_matching(word['text'])
+                    match = approximate_string_matching(word)
                     print(f'Match: {match}')
                     if match:
-                        match_text = match[0][1]
-                        print(f'Match Text: {match_text}')
-                        match_type = match[1]
-                        print(f'Match Type: {match_type}')
-                        match_id = [item[0] for item in ShopList+ProductList if item[1]==match_text][0]
-                        print(f'Match ID: {match_id}')
-                        match_distance = match[0][2]
-                        if match_distance > 0:
-                            if match_type == "shop":
-                                ShopList.append((match_id, match[0][0]))
-                            elif match_type == "product":
-                                ProductList.append((match_id, match[0][0]))
-                            writer.writerow([match_type, match_id, match[0][0], match_text, match_distance])
-                        else:
-                            writer.writerow([match_type, match_id, match[0][0], match_text, "exact match"])
+                        matched_words.append(match)
+                    else:
+                        unmatched_words.append(word)
+                # If there's more than one match, check which one has the
+                # Highest confidence to be processed
+                if len(matched_words) > 1:
+                    best_match = get_best_match(matched_words)
+                    if best_match:
+                        process_match(best_match)
+                elif len(matched_words) == 1:
+                    if matched_words[0] is not None:
+                        process_match(matched_words[0])
+                        best_match = matched_words[0]
+                    else:
+                        print("No match found")
+                matchList.append([line['text'], best_match, matched_words, unmatched_words])
+
+def get_best_match(matches):
+    best_match = None
+    highest_confidence = 0
+    for match in matches:
+        if match[0][2] > highest_confidence:
+            best_match = match
+            highest_confidence = match[0][2]
+    return best_match
+
+def process_match(match):
+    print(f'Process Match: {match}')
+    match_text = match[0][1]
+    print(f'Match Text: {match_text}')
+    match_type = match[1]
+    print(f'Match Type: {match_type}')
+    match_id = [item[0] for item in ShopList+ProductList if item[1]==match_text][0]
+    print(f'Match ID: {match_id}')
+    match_distance = match[0][3]
+    match_prob = "%.2f%%" % (match[0][2] * 100)
+    if match_distance > 0:
+        if match_type == "shop":
+            ShopList.append((match_id, match[0][0]))
+        elif match_type == "product":
+            ProductList.append((match_id, match[0][0]))
+        writer.writerow([match_type, match_id, match[0][0], match_text, match_distance, match_prob])
+    else:
+        writer.writerow([match_type, match_id, match[0][0], match_text, "exact match", match_prob])
+                    
+                       
 
 #%% Main
 if __name__ == "__main__":
@@ -154,7 +196,7 @@ if __name__ == "__main__":
 
     # Ensure Working Directory is the same as the folder
     os.getcwd()
-    #os.chdir('[Your Directory]')
+    #os.chdir(''[Your Directory]'')
     
     #%% Load JSONs from a file
     
@@ -181,13 +223,12 @@ if __name__ == "__main__":
     # Parse each JSON payload into a dictionary
     json_data_list = [json.loads(payload) for payload in json_payloads]
     
-    
     #%% Fuzzy Matching
     
     # Process the example JSON payload and write matches to a CSV file
     with open('matches.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['type', 'id', 'name', 'matched_name', 'Levenshtein Distance'])
+        writer.writerow(['type', 'id', 'name', 'matched_name', 'Levenshtein Distance', 'Probability'])
         
         da_index = 0
         for json_data in json_data_list:
@@ -205,3 +246,4 @@ if __name__ == "__main__":
     # Print the updated lists
     print(ShopList)
     print(ProductList)
+    
